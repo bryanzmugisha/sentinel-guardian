@@ -8,7 +8,7 @@
  * for Durable Objects, KV, or D1. Hooks are marked TODO below.
  */
 
-import { randomUUID } from "node:crypto";
+
 
 // -------- Types --------
 
@@ -93,19 +93,19 @@ const SEED_DEVICES: Device[] = [
 ];
 
 const SEED_THREATS: Threat[] = [
-  { id: randomUUID(), code: "SQL_INJECTION_VEC",  target: "PROD-DB-01", level: "CRITICAL", status: "ACTIVE", ts: Date.now() - 1200_000 },
-  { id: randomUUID(), code: "BRUTE_FORCE_AUTH",   target: "VPN-GW-04",  level: "WARNING",  status: "ACTIVE", ts: Date.now() -  900_000 },
-  { id: randomUUID(), code: "LATERAL_MOVEMENT",   target: "WKST-8821",  level: "CRITICAL", status: "ACTIVE", ts: Date.now() -  600_000 },
-  { id: randomUUID(), code: "DNS_TUNNELING",      target: "EDGE-RTR-12",level: "WARNING",  status: "ACTIVE", ts: Date.now() -  300_000 },
+  { id: crypto.randomUUID(), code: "SQL_INJECTION_VEC",  target: "PROD-DB-01", level: "CRITICAL", status: "ACTIVE", ts: Date.now() - 1200_000 },
+  { id: crypto.randomUUID(), code: "BRUTE_FORCE_AUTH",   target: "VPN-GW-04",  level: "WARNING",  status: "ACTIVE", ts: Date.now() -  900_000 },
+  { id: crypto.randomUUID(), code: "LATERAL_MOVEMENT",   target: "WKST-8821",  level: "CRITICAL", status: "ACTIVE", ts: Date.now() -  600_000 },
+  { id: crypto.randomUUID(), code: "DNS_TUNNELING",      target: "EDGE-RTR-12",level: "WARNING",  status: "ACTIVE", ts: Date.now() -  300_000 },
 ];
 
 const SEED_INTEL: IntelEvent[] = [
-  { id: randomUUID(), sev: "CRITICAL", ts: Date.now() -  10_000, body: "Anomalous traffic spike detected in Sector-9/Storage. Potential ransomware encryption activity.", highlight: "Sector-9/Storage" },
-  { id: randomUUID(), sev: "WARNING",  ts: Date.now() -  60_000, body: "Unauthorized escalation of privileges on workstation WKST-8821. User: s.miller.", highlight: "WKST-8821" },
-  { id: randomUUID(), sev: "INFO",     ts: Date.now() - 120_000, body: "Automatic security patch deployed successfully to 1,200 cloud endpoints." },
-  { id: randomUUID(), sev: "INFO",     ts: Date.now() - 240_000, body: "System health check completed. All nodes within operational parameters." },
-  { id: randomUUID(), sev: "WARNING",  ts: Date.now() - 360_000, body: "Webcam access requested by unsigned process on MBP-LAB-09. Auto-quarantined." },
-  { id: randomUUID(), sev: "INFO",     ts: Date.now() - 600_000, body: "Endpoint MBP-CORP-104 rotated AES-256 key successfully." },
+  { id: crypto.randomUUID(), sev: "CRITICAL", ts: Date.now() -  10_000, body: "Anomalous traffic spike detected in Sector-9/Storage. Potential ransomware encryption activity.", highlight: "Sector-9/Storage" },
+  { id: crypto.randomUUID(), sev: "WARNING",  ts: Date.now() -  60_000, body: "Unauthorized escalation of privileges on workstation WKST-8821. User: s.miller.", highlight: "WKST-8821" },
+  { id: crypto.randomUUID(), sev: "INFO",     ts: Date.now() - 120_000, body: "Automatic security patch deployed successfully to 1,200 cloud endpoints." },
+  { id: crypto.randomUUID(), sev: "INFO",     ts: Date.now() - 240_000, body: "System health check completed. All nodes within operational parameters." },
+  { id: crypto.randomUUID(), sev: "WARNING",  ts: Date.now() - 360_000, body: "Webcam access requested by unsigned process on MBP-LAB-09. Auto-quarantined." },
+  { id: crypto.randomUUID(), sev: "INFO",     ts: Date.now() - 600_000, body: "Endpoint MBP-CORP-104 rotated AES-256 key successfully." },
 ];
 
 const SEED_HEALTH: HealthMetric[] = [
@@ -249,7 +249,7 @@ export function tick() {
     const victim = pick(devs);
     const level: ThreatLevel = Math.random() < 0.25 ? "CRITICAL" : "WARNING";
     store.threats.unshift({
-      id: randomUUID(),
+      id: crypto.randomUUID(),
       code: pick(THREAT_CODES),
       target: victim.id,
       level,
@@ -265,7 +265,7 @@ export function tick() {
     const victim = pick(devs);
     const tpl = pick(INTEL_TEMPLATES);
     store.intel.unshift({
-      id: randomUUID(),
+      id: crypto.randomUUID(),
       sev: tpl.sev,
       ts: now,
       body: tpl.body(victim.hostname),
@@ -292,27 +292,32 @@ function avgRisk(): number {
   return sum / store.devices.size;
 }
 
-// Start the tick loop exactly once per process.
-// TODO(prod): on Cloudflare Workers this no-ops because there's no
-// persistent event loop. Use a Durable Object alarm or scheduled handler.
-const TICK_KEY = Symbol.for("sentinel-guardian.tick");
-type GlobalWithTick = typeof globalThis & { [TICK_KEY]?: NodeJS.Timeout | number };
+// Lazy tick: instead of setInterval (which has no persistent event loop on
+// Cloudflare Workers), we tick whenever state is read and at least 3s have
+// passed since the last tick. Works on both Node/Bun dev and CF Workers.
+const TICK_INTERVAL_MS = 3000;
+const LAST_TICK_KEY = Symbol.for("sentinel-guardian.lastTick");
+type GlobalWithTick = typeof globalThis & { [LAST_TICK_KEY]?: number };
 const tg = globalThis as GlobalWithTick;
-if (!tg[TICK_KEY] && typeof setInterval !== "undefined") {
-  try {
-    tg[TICK_KEY] = setInterval(tick, 3000) as unknown as NodeJS.Timeout;
-  } catch {
-    // Workers environment — silently skip
+if (!tg[LAST_TICK_KEY]) tg[LAST_TICK_KEY] = Date.now();
+
+function maybeTick(): void {
+  const now = Date.now();
+  if (now - (tg[LAST_TICK_KEY] ?? 0) >= TICK_INTERVAL_MS) {
+    tg[LAST_TICK_KEY] = now;
+    tick();
   }
 }
 
 // -------- Readers --------
 
 export function getDevices(): Device[] {
+  maybeTick();
   return Array.from(store.devices.values()).sort((a, b) => b.risk - a.risk);
 }
 
 export function getThreats(): Threat[] {
+  maybeTick();
   return [...store.threats];
 }
 
@@ -333,6 +338,7 @@ export function getPrivacy(): PrivacyMetric[] {
 }
 
 export function getFleetSummary(): FleetSummary {
+  maybeTick();
   const all = Array.from(store.devices.values());
   const secure = all.filter((d) => d.status === "SECURE").length;
   const critical = all.filter((d) => d.status === "CRITICAL").length;
