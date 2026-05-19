@@ -12,7 +12,7 @@ import {
   fetchPrivacy,
   fetchThreats,
   quarantineThreat,
-} from "@/server/queries";
+} from "@/lib/server-fns";
 
 const LIVE_MS = 3000;
 
