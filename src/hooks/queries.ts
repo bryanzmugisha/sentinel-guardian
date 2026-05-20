@@ -12,6 +12,7 @@ import {
   fetchPrivacy,
   fetchThreats,
   quarantineThreat,
+  fetchKvStatus,
 } from "@/lib/server-fns";
 
 const LIVE_MS = 3000;
@@ -72,5 +73,13 @@ export function useQuarantineThreat() {
       qc.invalidateQueries({ queryKey: ["threats"] });
       qc.invalidateQueries({ queryKey: ["intel"] });
     },
+  });
+}
+
+export function useKvStatus() {
+  return useQuery({
+    queryKey: ["kv-status"],
+    queryFn: () => fetchKvStatus(),
+    staleTime: 60_000, // only check once per minute
   });
 }

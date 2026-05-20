@@ -1,7 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { AlertTriangle, Cpu, Plus, Wifi } from "lucide-react";
 import threatMap from "@/assets/threat-map.jpg";
 import { Bar, Shell, sevColor, statusStyles } from "@/components/layout/shell";
+import { EnrollModal } from "@/components/EnrollModal";
 import {
   useDevices,
   useFleetSummary,
@@ -27,6 +29,7 @@ function Dashboard() {
   const privacy = usePrivacy().data ?? [];
   const health = useHealth().data ?? [];
 
+  const [enrollOpen, setEnrollOpen] = useState(false);
   const topThreats = threats.filter((t) => t.status === "ACTIVE").slice(0, 4);
   const topDevices = devices.slice(0, 6);
   const latestCritical = intel.find((i) => i.sev === "CRITICAL");
@@ -256,7 +259,7 @@ function Dashboard() {
               >
                 View All
               </Link>
-              <button className="px-2.5 py-1 text-[10px] font-mono uppercase tracking-widest text-brand-accent border border-brand-accent/30 rounded flex items-center gap-1.5 hover:bg-brand-accent/10">
+              <button onClick={() => setEnrollOpen(true)} className="px-2.5 py-1 text-[10px] font-mono uppercase tracking-widest text-brand-accent border border-brand-accent/30 rounded flex items-center gap-1.5 hover:bg-brand-accent/10">
                 <Plus className="size-3" /> Enroll Endpoint
               </button>
             </div>
@@ -379,6 +382,7 @@ function Dashboard() {
           </div>
         </div>
       </div>
+      {enrollOpen && <EnrollModal onClose={() => setEnrollOpen(false)} />}
     </Shell>
   );
 }

@@ -1,42 +1,30 @@
 /**
- * POST /api/ingest — receives telemetry from an external agent.
+ * POST /api/ingest — receives telemetry from an enrolled agent.
  *
- * Auth: shared bearer token in the `Authorization` header. Set
- * SENTINEL_AGENT_TOKEN in the environment; in dev the default is
- * "dev-token" so you can run the agent without configuration.
+ * Auth: bearer token matching SENTINEL_AGENT_TOKEN (default "dev-token").
+ * Body: { hostname, os?, ip?, cpu, ram, disk? }  — cpu/ram/disk are 0-100%.
  *
- * The body must be JSON:
- *   { hostname: string, os?: string, ip?: string,
- *     cpu: number, ram: number, disk?: number }
- *
- * cpu / ram / disk are percentages 0–100.
+ * On success the device is:
+ *   1. Upserted into the in-memory store (fast path for same-isolate reads).
+ *   2. Written to Upstash Redis so it survives across Vercel cold starts.
  */
 
 import { createFileRoute } from "@tanstack/react-router";
 import { upsertFromAgent, type AgentReport } from "../../server/state";
+import { kvSaveDevice } from "../../server/kv";
 
 const DEFAULT_TOKEN = "dev-token";
 
 function expectedToken(): string {
-  // process.env works in Node/Bun. On Workers, secrets arrive on the
-  // request env binding; deployers should swap this for their
-  // platform's secret mechanism.
   return (
     (typeof process !== "undefined" && process.env?.SENTINEL_AGENT_TOKEN) ||
     DEFAULT_TOKEN
   );
 }
 
-function unauthorized() {
-  return new Response(JSON.stringify({ error: "unauthorized" }), {
-    status: 401,
-    headers: { "content-type": "application/json" },
-  });
-}
-
-function badRequest(msg: string) {
-  return new Response(JSON.stringify({ error: msg }), {
-    status: 400,
+function res(body: unknown, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
     headers: { "content-type": "application/json" },
   });
 }
@@ -60,18 +48,20 @@ export const Route = createFileRoute("/api/ingest")({
       POST: async ({ request }: { request: Request }) => {
         const auth = request.headers.get("authorization") ?? "";
         const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-        if (token !== expectedToken()) return unauthorized();
+        if (token !== expectedToken()) return res({ error: "unauthorized" }, 401);
 
         let body: unknown;
-        try {
-          body = await request.json();
-        } catch {
-          return badRequest("invalid JSON");
-        }
-        if (!isReport(body)) return badRequest("invalid report shape");
+        try { body = await request.json(); }
+        catch { return res({ error: "invalid JSON" }, 400); }
+
+        if (!isReport(body)) return res({ error: "invalid report shape" }, 400);
 
         const device = upsertFromAgent(body);
-        return Response.json({ ok: true, device });
+
+        // Persist to KV so the device survives serverless cold starts
+        await kvSaveDevice(device);
+
+        return res({ ok: true, device });
       },
     },
   },

@@ -1,4 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { useState } from "react";
+import { EnrollModal } from "@/components/EnrollModal";
+import { Plus } from "lucide-react";
 import { Cpu } from "lucide-react";
 import { Bar, Shell, statusStyles } from "@/components/layout/shell";
 import { useDevices } from "@/hooks/queries";
@@ -10,6 +13,7 @@ export const Route = createFileRoute("/devices")({
 function DevicesPage() {
   const devices = useDevices().data ?? [];
   const liveCount = devices.filter((d) => d.source === "agent").length;
+  const [enrollOpen, setEnrollOpen] = useState(false);
 
   return (
     <Shell>
@@ -22,6 +26,9 @@ function DevicesPage() {
             Device Telemetry
           </h1>
         </div>
+        <button onClick={() => setEnrollOpen(true)} className="px-3 py-2 text-[10px] font-mono uppercase tracking-widest text-brand-accent border border-brand-accent/30 rounded flex items-center gap-1.5 hover:bg-brand-accent/10 transition-colors">
+          <Plus className="size-3" /> Enroll Endpoint
+        </button>
         <div className="flex gap-6 text-xs font-mono">
           <Stat label="Enrolled"     value={devices.length.toString()} />
           <Stat label="Live agents"  value={liveCount.toString()} tone="accent" />
@@ -96,6 +103,7 @@ function DevicesPage() {
           ? "All telemetry is simulated. Run the bundled agent to add a real device."
           : `${liveCount} device${liveCount === 1 ? "" : "s"} reporting real telemetry from a host agent.`}
       </p>
+      {enrollOpen && <EnrollModal onClose={() => setEnrollOpen(false)} />}
     </Shell>
   );
 }
