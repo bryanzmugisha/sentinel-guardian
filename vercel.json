@@ -4,20 +4,11 @@
   "framework": null,
   "functions": {
     "api/server.js": {
-      "includeFiles": "dist/server/**"
-    },
-    "api/ingest.js": {
-      "maxDuration": 10
+      "includeFiles": "dist/server/**",
+      "maxDuration": 30
     }
   },
   "rewrites": [
-    {
-      "source": "/api/ingest",
-      "destination": "/api/ingest"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/api/server"
-    }
+    { "source": "/(.*)", "destination": "/api/server" }
   ]
 }

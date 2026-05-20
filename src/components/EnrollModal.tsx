@@ -204,15 +204,19 @@ CMD ["bun", "agent/agent.ts"]`;
             <p className="text-[10px] text-slate-500 mt-2">
               Or scan the QR code: open your camera app and point it at the code.
             </p>
-            {/* QR rendered via public API — no package needed */}
-            <div className="mt-3 flex justify-center">
+            <div className="mt-3 flex flex-col items-center gap-3">
               <img
-                src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(`${baseUrl}/enroll`)}&bgcolor=0f1117&color=ffffff&format=svg`}
-                alt="QR code for /enroll"
+                src={`https://quickchart.io/qr?text=${encodeURIComponent(`${baseUrl}/enroll`)}&size=140&dark=22c55e&light=0f1117`}
+                alt="QR code"
                 width={140}
                 height={140}
                 className="rounded-lg border border-border"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }}
               />
+              <p className="text-[10px] text-slate-500 font-mono text-center">
+                If QR doesn't load, open this URL on your phone:
+              </p>
+              <CodeBlock code={`${baseUrl}/enroll`} />
             </div>
           </div>
 

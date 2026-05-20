@@ -1,4 +1,5 @@
 import "./lib/error-capture";
+export { upsertFromAgent, getDevices } from "./server/state";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
