@@ -13,6 +13,7 @@ import { Route as ThreatsRouteImport } from './routes/threats'
 import { Route as PoliciesRouteImport } from './routes/policies'
 import { Route as NetworkRouteImport } from './routes/network'
 import { Route as LogsRouteImport } from './routes/logs'
+import { Route as EnrollRouteImport } from './routes/enroll'
 import { Route as DevicesRouteImport } from './routes/devices'
 import { Route as AiAssistantRouteImport } from './routes/ai-assistant'
 import { Route as IndexRouteImport } from './routes/index'
@@ -37,6 +38,11 @@ const LogsRoute = LogsRouteImport.update({
   path: '/logs',
   getParentRoute: () => rootRouteImport,
 } as any)
+const EnrollRoute = EnrollRouteImport.update({
+  id: '/enroll',
+  path: '/enroll',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DevicesRoute = DevicesRouteImport.update({
   id: '/devices',
   path: '/devices',
@@ -57,6 +63,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ai-assistant': typeof AiAssistantRoute
   '/devices': typeof DevicesRoute
+  '/enroll': typeof EnrollRoute
   '/logs': typeof LogsRoute
   '/network': typeof NetworkRoute
   '/policies': typeof PoliciesRoute
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ai-assistant': typeof AiAssistantRoute
   '/devices': typeof DevicesRoute
+  '/enroll': typeof EnrollRoute
   '/logs': typeof LogsRoute
   '/network': typeof NetworkRoute
   '/policies': typeof PoliciesRoute
@@ -76,6 +84,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/ai-assistant': typeof AiAssistantRoute
   '/devices': typeof DevicesRoute
+  '/enroll': typeof EnrollRoute
   '/logs': typeof LogsRoute
   '/network': typeof NetworkRoute
   '/policies': typeof PoliciesRoute
@@ -87,6 +96,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai-assistant'
     | '/devices'
+    | '/enroll'
     | '/logs'
     | '/network'
     | '/policies'
@@ -96,6 +106,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai-assistant'
     | '/devices'
+    | '/enroll'
     | '/logs'
     | '/network'
     | '/policies'
@@ -105,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/ai-assistant'
     | '/devices'
+    | '/enroll'
     | '/logs'
     | '/network'
     | '/policies'
@@ -115,6 +127,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AiAssistantRoute: typeof AiAssistantRoute
   DevicesRoute: typeof DevicesRoute
+  EnrollRoute: typeof EnrollRoute
   LogsRoute: typeof LogsRoute
   NetworkRoute: typeof NetworkRoute
   PoliciesRoute: typeof PoliciesRoute
@@ -151,6 +164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LogsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/enroll': {
+      id: '/enroll'
+      path: '/enroll'
+      fullPath: '/enroll'
+      preLoaderRoute: typeof EnrollRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/devices': {
       id: '/devices'
       path: '/devices'
@@ -179,6 +199,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AiAssistantRoute: AiAssistantRoute,
   DevicesRoute: DevicesRoute,
+  EnrollRoute: EnrollRoute,
   LogsRoute: LogsRoute,
   NetworkRoute: NetworkRoute,
   PoliciesRoute: PoliciesRoute,

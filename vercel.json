@@ -6,16 +6,12 @@
     "api/server.js": {
       "includeFiles": "dist/server/**"
     },
-    "api/ingest.cjs": {}
+    "api/ingest.cjs": {
+      "maxDuration": 10
+    }
   },
   "rewrites": [
-    {
-      "source": "/api/ingest",
-      "destination": "/api/ingest.cjs"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "/api/server"
-    }
+    { "source": "/api/ingest", "destination": "/api/ingest.cjs" },
+    { "source": "/(.*)", "destination": "/api/server" }
   ]
 }

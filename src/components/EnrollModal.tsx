@@ -6,7 +6,7 @@
  * from environment variables and posts telemetry to /api/ingest.
  */
 
-import { Check, Copy, X, AlertTriangle, Terminal, Wifi } from "lucide-react";
+import { Check, Copy, X, AlertTriangle, Terminal, Wifi, QrCode, Smartphone } from "lucide-react";
 import { useState } from "react";
 import { useKvStatus } from "@/hooks/queries";
 
@@ -188,6 +188,32 @@ CMD ["bun", "agent/agent.ts"]`;
               <span className="text-[9px] font-mono text-brand-accent border border-brand-accent/40 rounded px-1.5 py-0.5">live</span>.
               It reports CPU, RAM, disk and OS every 5 seconds.
             </p>
+          </div>
+
+
+          {/* Mobile / tablet section */}
+          <div className="p-4 rounded-xl bg-brand-accent/5 border border-brand-accent/20">
+            <div className="flex items-center gap-2 mb-3">
+              <Smartphone className="size-4 text-brand-accent" />
+              <span className="text-xs font-bold text-white">Phone or tablet?</span>
+            </div>
+            <p className="text-xs text-slate-400 leading-relaxed mb-3">
+              Open this link on your phone or tablet. It detects the device and enrolls it with one tap — no app or script needed.
+            </p>
+            <CodeBlock code={`${baseUrl}/enroll`} />
+            <p className="text-[10px] text-slate-500 mt-2">
+              Or scan the QR code: open your camera app and point it at the code.
+            </p>
+            {/* QR rendered via public API — no package needed */}
+            <div className="mt-3 flex justify-center">
+              <img
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=${encodeURIComponent(`${baseUrl}/enroll`)}&bgcolor=0f1117&color=ffffff&format=svg`}
+                alt="QR code for /enroll"
+                width={140}
+                height={140}
+                className="rounded-lg border border-border"
+              />
+            </div>
           </div>
 
           {/* Environment reference */}
