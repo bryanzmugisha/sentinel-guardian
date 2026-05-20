@@ -1,85 +1,103 @@
 /**
- * Client-side hooks. Each wraps a server function in a polling
- * useQuery so the dashboard updates roughly in real time.
+ * Client-side data hooks — plain fetch to /api/data/* endpoints.
+ *
+ * Replaced TanStack createServerFn (which required loading the 1.6 MB SSR
+ * bundle on cold start) with direct REST calls to a lightweight data API
+ * served by the same api/server.js function using a ~50 KB bundle.
  */
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  fetchDevices,
-  fetchFleetSummary,
-  fetchHealth,
-  fetchIntel,
-  fetchPrivacy,
-  fetchThreats,
-  quarantineThreat,
-  fetchKvStatus,
-} from "@/lib/server-fns";
+import type {
+  Device,
+  FleetSummary,
+  HealthMetric,
+  IntelEvent,
+  PrivacyMetric,
+  Threat,
+} from "@/server/state";
 
-const LIVE_MS = 3000;
+// Re-export types so components don't need to import from server paths
+export type { Device, FleetSummary, HealthMetric, IntelEvent, PrivacyMetric, Threat };
+
+async function api<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(path, init);
+  if (!res.ok) {
+    const text = await res.text().catch(() => res.statusText);
+    throw new Error(`API ${path}: ${res.status} ${text}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+const LIVE = 3000;
 
 export function useFleetSummary() {
   return useQuery({
     queryKey: ["fleet-summary"],
-    queryFn: () => fetchFleetSummary(),
-    refetchInterval: LIVE_MS,
+    queryFn: () => api<FleetSummary>("/api/data/fleet-summary"),
+    refetchInterval: LIVE,
   });
 }
 
 export function useDevices() {
   return useQuery({
     queryKey: ["devices"],
-    queryFn: () => fetchDevices(),
-    refetchInterval: LIVE_MS,
+    queryFn: () => api<Device[]>("/api/data/devices"),
+    refetchInterval: LIVE,
   });
 }
 
 export function useThreats() {
   return useQuery({
     queryKey: ["threats"],
-    queryFn: () => fetchThreats(),
-    refetchInterval: LIVE_MS,
+    queryFn: () => api<Threat[]>("/api/data/threats"),
+    refetchInterval: LIVE,
   });
 }
 
 export function useIntel() {
   return useQuery({
     queryKey: ["intel"],
-    queryFn: () => fetchIntel(),
-    refetchInterval: LIVE_MS,
+    queryFn: () => api<IntelEvent[]>("/api/data/intel"),
+    refetchInterval: LIVE,
   });
 }
 
 export function useHealth() {
   return useQuery({
     queryKey: ["health"],
-    queryFn: () => fetchHealth(),
-    refetchInterval: LIVE_MS * 2,
+    queryFn: () => api<HealthMetric[]>("/api/data/health"),
+    refetchInterval: LIVE * 2,
   });
 }
 
 export function usePrivacy() {
   return useQuery({
     queryKey: ["privacy"],
-    queryFn: () => fetchPrivacy(),
-    refetchInterval: LIVE_MS,
-  });
-}
-
-export function useQuarantineThreat() {
-  const qc = useQueryClient();
-  return useMutation({
-    mutationFn: (id: string) => quarantineThreat({ data: id }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["threats"] });
-      qc.invalidateQueries({ queryKey: ["intel"] });
-    },
+    queryFn: () => api<PrivacyMetric[]>("/api/data/privacy"),
+    refetchInterval: LIVE,
   });
 }
 
 export function useKvStatus() {
   return useQuery({
     queryKey: ["kv-status"],
-    queryFn: () => fetchKvStatus(),
-    staleTime: 60_000, // only check once per minute
+    queryFn: () => api<{ available: boolean }>("/api/data/kv-status"),
+    staleTime: 60_000,
+  });
+}
+
+export function useQuarantineThreat() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) =>
+      api("/api/data/quarantine", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id }),
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["threats"] });
+      qc.invalidateQueries({ queryKey: ["intel"] });
+    },
   });
 }

@@ -301,7 +301,7 @@ type GlobalWithTick = typeof globalThis & { [LAST_TICK_KEY]?: number };
 const tg = globalThis as GlobalWithTick;
 if (!tg[LAST_TICK_KEY]) tg[LAST_TICK_KEY] = Date.now();
 
-function maybeTick(): void {
+export function maybeTick(): void {
   const now = Date.now();
   if (now - (tg[LAST_TICK_KEY] ?? 0) >= TICK_INTERVAL_MS) {
     tg[LAST_TICK_KEY] = now;
