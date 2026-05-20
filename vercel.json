@@ -5,9 +5,14 @@
   "functions": {
     "api/server.js": {
       "includeFiles": "dist/server/**"
-    }
+    },
+    "api/ingest.cjs": {}
   },
   "rewrites": [
+    {
+      "source": "/api/ingest",
+      "destination": "/api/ingest.cjs"
+    },
     {
       "source": "/(.*)",
       "destination": "/api/server"

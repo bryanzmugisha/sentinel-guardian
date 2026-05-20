@@ -16,7 +16,6 @@ import { Route as LogsRouteImport } from './routes/logs'
 import { Route as DevicesRouteImport } from './routes/devices'
 import { Route as AiAssistantRouteImport } from './routes/ai-assistant'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiIngestRouteImport } from './routes/api/ingest'
 
 const ThreatsRoute = ThreatsRouteImport.update({
   id: '/threats',
@@ -53,11 +52,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiIngestRoute = ApiIngestRouteImport.update({
-  id: '/api/ingest',
-  path: '/api/ingest',
-  getParentRoute: () => rootRouteImport,
-} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -67,7 +61,6 @@ export interface FileRoutesByFullPath {
   '/network': typeof NetworkRoute
   '/policies': typeof PoliciesRoute
   '/threats': typeof ThreatsRoute
-  '/api/ingest': typeof ApiIngestRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -77,7 +70,6 @@ export interface FileRoutesByTo {
   '/network': typeof NetworkRoute
   '/policies': typeof PoliciesRoute
   '/threats': typeof ThreatsRoute
-  '/api/ingest': typeof ApiIngestRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -88,7 +80,6 @@ export interface FileRoutesById {
   '/network': typeof NetworkRoute
   '/policies': typeof PoliciesRoute
   '/threats': typeof ThreatsRoute
-  '/api/ingest': typeof ApiIngestRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -100,7 +91,6 @@ export interface FileRouteTypes {
     | '/network'
     | '/policies'
     | '/threats'
-    | '/api/ingest'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -110,7 +100,6 @@ export interface FileRouteTypes {
     | '/network'
     | '/policies'
     | '/threats'
-    | '/api/ingest'
   id:
     | '__root__'
     | '/'
@@ -120,7 +109,6 @@ export interface FileRouteTypes {
     | '/network'
     | '/policies'
     | '/threats'
-    | '/api/ingest'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -131,7 +119,6 @@ export interface RootRouteChildren {
   NetworkRoute: typeof NetworkRoute
   PoliciesRoute: typeof PoliciesRoute
   ThreatsRoute: typeof ThreatsRoute
-  ApiIngestRoute: typeof ApiIngestRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -185,13 +172,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/ingest': {
-      id: '/api/ingest'
-      path: '/api/ingest'
-      fullPath: '/api/ingest'
-      preLoaderRoute: typeof ApiIngestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -203,7 +183,6 @@ const rootRouteChildren: RootRouteChildren = {
   NetworkRoute: NetworkRoute,
   PoliciesRoute: PoliciesRoute,
   ThreatsRoute: ThreatsRoute,
-  ApiIngestRoute: ApiIngestRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
