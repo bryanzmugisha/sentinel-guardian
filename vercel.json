@@ -4,7 +4,6 @@
   "framework": null,
   "functions": {
     "api/server.js": {
-      "runtime": "@vercel/node",
       "includeFiles": "dist/server/**"
     }
   },
