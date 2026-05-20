@@ -1,57 +1,74 @@
 /**
  * src/server/kv.ts
  *
- * Thin wrapper around Upstash Redis for persisting agent-reported devices.
- * Falls back to a silent no-op when UPSTASH_REDIS_REST_URL is not set
- * (local dev without Redis configured).
+ * Upstash Redis persistence using the HTTP REST API directly — no npm
+ * package required. Works in any Node 18+ or edge environment that has
+ * fetch. Silently no-ops when the env vars are not set (local dev).
  *
- * Env vars (set automatically when you connect an Upstash Redis integration
- * in the Vercel dashboard):
- *   UPSTASH_REDIS_REST_URL
- *   UPSTASH_REDIS_REST_TOKEN
+ * Env vars (injected automatically when you add the Upstash Redis
+ * integration in Vercel → Integrations):
+ *   UPSTASH_REDIS_REST_URL    e.g. https://your-db.upstash.io
+ *   UPSTASH_REDIS_REST_TOKEN  your-token
  */
 
 import type { Device } from "./state";
 
 const PREFIX = "sg:device:";
-const TTL = 60 * 10; // 10 minutes — device must re-report to stay visible
+const TTL_SEC = 600; // 10 minutes — device must re-report to stay visible
 
-function getRedis() {
-  const url = process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+function credentials() {
+  const url =
+    (typeof process !== "undefined" && process.env?.UPSTASH_REDIS_REST_URL) || "";
+  const token =
+    (typeof process !== "undefined" && process.env?.UPSTASH_REDIS_REST_TOKEN) || "";
+  return { url, token };
+}
+
+/** Execute a Redis command via the Upstash REST API. */
+async function redisCmd<T = unknown>(
+  ...args: (string | number)[]
+): Promise<T | null> {
+  const { url, token } = credentials();
   if (!url || !token) return null;
-  // Lazy import so the module doesn't crash when the package is missing
-  // or when running in environments that don't support it.
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const { Redis } = require("@upstash/redis");
-    return new Redis({ url, token }) as import("@upstash/redis").Redis;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(args),
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { result: T };
+    return json.result ?? null;
   } catch {
     return null;
   }
 }
 
-/** Save a device to KV. Silently no-ops if Redis is unavailable. */
+/** Save a device. Silently no-ops if Redis is unavailable. */
 export async function kvSaveDevice(device: Device): Promise<void> {
-  const redis = getRedis();
-  if (!redis) return;
   try {
-    await redis.set(`${PREFIX}${device.id}`, JSON.stringify(device), {
-      ex: TTL,
-    });
-  } catch (e) {
-    console.warn("[kv] save failed:", e);
+    await redisCmd("SET", `${PREFIX}${device.id}`, JSON.stringify(device), "EX", TTL_SEC);
+  } catch {
+    // ignore — persistence is best-effort
   }
 }
 
-/** Load all agent devices from KV. Returns [] if Redis is unavailable. */
+/** Load all persisted agent devices. Returns [] if Redis is unavailable. */
 export async function kvLoadAgentDevices(): Promise<Device[]> {
-  const redis = getRedis();
-  if (!redis) return [];
+  const { url, token } = credentials();
+  if (!url || !token) return [];
   try {
-    const keys: string[] = await redis.keys(`${PREFIX}*`);
-    if (!keys.length) return [];
-    const values = await redis.mget<string[]>(...keys);
+    // 1. Get all matching keys
+    const keys = await redisCmd<string[]>("KEYS", `${PREFIX}*`);
+    if (!keys || !keys.length) return [];
+
+    // 2. Fetch all values in one MGET call
+    const values = await redisCmd<(string | null)[]>("MGET", ...keys);
+    if (!values) return [];
+
     return values
       .filter(Boolean)
       .map((v) => {
@@ -62,25 +79,13 @@ export async function kvLoadAgentDevices(): Promise<Device[]> {
         }
       })
       .filter(Boolean) as Device[];
-  } catch (e) {
-    console.warn("[kv] load failed:", e);
+  } catch {
     return [];
   }
 }
 
-/** Remove a device from KV. */
-export async function kvDeleteDevice(id: string): Promise<void> {
-  const redis = getRedis();
-  if (!redis) return;
-  try {
-    await redis.del(`${PREFIX}${id}`);
-  } catch {}
-}
-
-/** True if KV is configured (env vars are set). */
+/** True when Upstash credentials are present in the environment. */
 export function kvAvailable(): boolean {
-  return !!(
-    process.env.UPSTASH_REDIS_REST_URL &&
-    process.env.UPSTASH_REDIS_REST_TOKEN
-  );
+  const { url, token } = credentials();
+  return !!(url && token);
 }
